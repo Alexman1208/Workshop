@@ -1,0 +1,13 @@
+測試文件 2 號
+Test File #2
+Created: 2024/03/22
+Author: Alexman1208
+
+這個文件用來測試 GitHub 上傳功能
+This file is used to test GitHub upload functionality
+
+=== 測試內容 / Test Content ===
+1. 中文支援
+2. English support
+3. 數字 Numbers 123
+4. 特殊符號 !@#$%^&*() 
