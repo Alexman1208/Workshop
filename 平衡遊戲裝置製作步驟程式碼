@@ -1,0 +1,248 @@
+#include <Wire.h>
+#include <LiquidCrystal_I2C.h>
+
+// 定義接腳
+#define TILT_X 2
+#define TILT_Y 3
+#define LED_N 4
+#define LED_E 5
+#define LED_S 6
+#define LED_W 7
+#define LED_WARNING1 8
+#define LED_WARNING2 9
+#define LED_DANGER1 10
+#define LED_DANGER2 11
+#define BUZZER 12
+#define BTN_START A0
+#define BTN_DIFFICULTY A1
+
+// LCD設置
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// 遊戲變數
+unsigned long gameStartTime = 0;
+unsigned long currentTime = 0;
+int score = 0;
+int difficulty = 1;
+bool gameRunning = false;
+int tiltCount = 0;
+int highScore = 0;
+
+// 按鈕防彈跳變數
+unsigned long lastDebounceTime = 0;
+unsigned long debounceDelay = 50;
+bool lastButtonState = HIGH;
+bool buttonState = HIGH;
+
+void setup() {
+  // 初始化接腳
+  pinMode(TILT_X, INPUT_PULLUP);
+  pinMode(TILT_Y, INPUT_PULLUP);
+  pinMode(LED_N, OUTPUT);
+  pinMode(LED_E, OUTPUT);
+  pinMode(LED_S, OUTPUT);
+  pinMode(LED_W, OUTPUT);
+  pinMode(LED_WARNING1, OUTPUT);
+  pinMode(LED_WARNING2, OUTPUT);
+  pinMode(LED_DANGER1, OUTPUT);
+  pinMode(LED_DANGER2, OUTPUT);
+  pinMode(BUZZER, OUTPUT);
+  pinMode(BTN_START, INPUT_PULLUP);
+  pinMode(BTN_DIFFICULTY, INPUT_PULLUP);
+  
+  // 初始化LCD
+  lcd.init();
+  lcd.backlight();
+  showStartScreen();
+  
+  // 初始化蜂鳴器
+  tone(BUZZER, 1000, 100);
+  delay(100);
+  tone(BUZZER, 2000, 100);
+}
+
+void loop() {
+  if (!gameRunning) {
+    checkStartButton();
+    checkDifficultyButton();
+  } else {
+    gameLoop();
+  }
+}
+
+void showStartScreen() {
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Balance Game");
+  lcd.setCursor(0, 1);
+  lcd.print("Press to Start");
+  lcd.print(" Diff:");
+  lcd.print(difficulty);
+}
+
+void checkStartButton() {
+  bool reading = digitalRead(BTN_START);
+  
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading == LOW) {
+      startGame();
+    }
+  }
+  
+  lastButtonState = reading;
+}
+
+void checkDifficultyButton() {
+  bool reading = digitalRead(BTN_DIFFICULTY);
+  
+  if (reading != lastButtonState) {
+    lastDebounceTime = millis();
+  }
+  
+  if ((millis() - lastDebounceTime) > debounceDelay) {
+    if (reading == LOW) {
+      difficulty = (difficulty % 3) + 1;
+      showStartScreen();
+    }
+  }
+  
+  lastButtonState = reading;
+}
+
+void startGame() {
+  gameRunning = true;
+  gameStartTime = millis();
+  score = 0;
+  tiltCount = 0;
+  clearLEDs();
+  lcd.clear();
+  lcd.print("Game Started!");
+  delay(1000);
+  lcd.clear();
+}
+
+void gameLoop() {
+  // 讀取傾斜狀態
+  bool tiltX = digitalRead(TILT_X);
+  bool tiltY = digitalRead(TILT_Y);
+  
+  // 更新遊戲狀態
+  if (tiltX || tiltY) {
+    handleTilt(tiltX, tiltY);
+  }
+  
+  // 更新顯示
+  updateDisplay();
+  
+  // 檢查遊戲結束條件
+  if (tiltCount >= (4 - difficulty) * 5) {
+    endGame();
+  }
+}
+
+void handleTilt(bool tiltX, bool tiltY) {
+  tiltCount++;
+  
+  // 根據傾斜方向點亮對應LED
+  if (tiltX) {
+    digitalWrite(LED_E, HIGH);
+    digitalWrite(LED_W, HIGH);
+  }
+  if (tiltY) {
+    digitalWrite(LED_N, HIGH);
+    digitalWrite(LED_S, HIGH);
+  }
+  
+  // 根據傾斜程度發出警告
+  if (tiltCount > 5) {
+    digitalWrite(LED_WARNING1, HIGH);
+    digitalWrite(LED_WARNING2, HIGH);
+    tone(BUZZER, 1000, 100);
+  }
+  
+  if (tiltCount > 10) {
+    digitalWrite(LED_DANGER1, HIGH);
+    digitalWrite(LED_DANGER2, HIGH);
+    tone(BUZZER, 2000, 200);
+  }
+  
+  // 扣分
+  score = max(0, score - 10);
+}
+
+void updateDisplay() {
+  currentTime = (millis() - gameStartTime) / 1000;
+  score = currentTime - (tiltCount * 10);
+  
+  lcd.setCursor(0, 0);
+  lcd.print("Score: ");
+  lcd.print(score);
+  lcd.print(" ");
+  lcd.print(currentTime);
+  lcd.print("s");
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Tilt: ");
+  lcd.print(tiltCount);
+  lcd.print(" Diff: ");
+  lcd.print(difficulty);
+}
+
+void endGame() {
+  gameRunning = false;
+  
+  // 更新最高分
+  if (score > highScore) {
+    highScore = score;
+  }
+  
+  // 顯示遊戲結束畫面
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Game Over!");
+  lcd.setCursor(0, 1);
+  lcd.print("Score: ");
+  lcd.print(score);
+  
+  // 播放結束音效
+  tone(BUZZER, 1000, 200);
+  delay(200);
+  tone(BUZZER, 500, 400);
+  
+  // 閃爍所有LED
+  for (int i = 0; i < 3; i++) {
+    allLEDsOn();
+    delay(200);
+    clearLEDs();
+    delay(200);
+  }
+  
+  delay(2000);
+  showStartScreen();
+}
+
+void clearLEDs() {
+  digitalWrite(LED_N, LOW);
+  digitalWrite(LED_E, LOW);
+  digitalWrite(LED_S, LOW);
+  digitalWrite(LED_W, LOW);
+  digitalWrite(LED_WARNING1, LOW);
+  digitalWrite(LED_WARNING2, LOW);
+  digitalWrite(LED_DANGER1, LOW);
+  digitalWrite(LED_DANGER2, LOW);
+}
+
+void allLEDsOn() {
+  digitalWrite(LED_N, HIGH);
+  digitalWrite(LED_E, HIGH);
+  digitalWrite(LED_S, HIGH);
+  digitalWrite(LED_W, HIGH);
+  digitalWrite(LED_WARNING1, HIGH);
+  digitalWrite(LED_WARNING2, HIGH);
+  digitalWrite(LED_DANGER1, HIGH);
+  digitalWrite(LED_DANGER2, HIGH);
+} 
