@@ -1,0 +1,56 @@
+// 定義腳位
+const int NORTH_SWITCH = 2;  // 北方向水銀開關
+const int EAST_SWITCH = 3;   // 東方向水銀開關
+const int SOUTH_SWITCH = 4;  // 南方向水銀開關
+const int WEST_SWITCH = 5;   // 西方向水銀開關
+
+const int NORTH_LED = 6;     // 北LED
+const int EAST_LED = 7;      // 東LED
+const int SOUTH_LED = 8;     // 南LED
+const int WEST_LED = 9;      // 西LED
+
+void setup() {
+  // 設定水銀開關腳位
+  pinMode(NORTH_SWITCH, INPUT_PULLUP);
+  pinMode(EAST_SWITCH, INPUT_PULLUP);
+  pinMode(SOUTH_SWITCH, INPUT_PULLUP);
+  pinMode(WEST_SWITCH, INPUT_PULLUP);
+  
+  // 設定LED腳位
+  pinMode(NORTH_LED, OUTPUT);
+  pinMode(EAST_LED, OUTPUT);
+  pinMode(SOUTH_LED, OUTPUT);
+  pinMode(WEST_LED, OUTPUT);
+  
+  // 設定LED輸出電流較低以保護LED
+  analogWrite(NORTH_LED, 64);
+  analogWrite(EAST_LED, 64);
+  analogWrite(SOUTH_LED, 64);
+  analogWrite(WEST_LED, 64);
+}
+
+void loop() {
+  checkBalance();
+}
+
+void checkBalance() {
+  // 讀取四個方向的開關狀態
+  int northState = digitalRead(NORTH_SWITCH);
+  int eastState = digitalRead(EAST_SWITCH);
+  int southState = digitalRead(SOUTH_SWITCH);
+  int westState = digitalRead(WEST_SWITCH);
+  
+  // 關閉所有方向LED
+  digitalWrite(NORTH_LED, LOW);
+  digitalWrite(EAST_LED, LOW);
+  digitalWrite(SOUTH_LED, LOW);
+  digitalWrite(WEST_LED, LOW);
+  
+  // 根據傾斜狀態點亮對應LED
+  if (northState == HIGH) digitalWrite(NORTH_LED, HIGH);
+  if (eastState == HIGH) digitalWrite(EAST_LED, HIGH);
+  if (southState == HIGH) digitalWrite(SOUTH_LED, HIGH);
+  if (westState == HIGH) digitalWrite(WEST_LED, HIGH);
+  
+  delay(100);  // 小延遲以避免LED閃爍太快
+}
